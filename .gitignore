@@ -1,0 +1,20 @@
+# 依存パッケージ
+node_modules/
+
+# Next.js のビルド結果・自動生成ファイル
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# 環境変数
+.env*
+!.env.example
+
+# ログ
+npm-debug.log*
+
+# OSが作るファイル
+*:Zone.Identifier
+.DS_Store
+Thumbs.db

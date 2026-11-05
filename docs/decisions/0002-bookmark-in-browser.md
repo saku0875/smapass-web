@@ -1,6 +1,6 @@
 # 0002 ブックマークはMVPではブラウザに保存する
 
-- ステータス：提案中
+- ステータス：置き換え済み（[0012](0012-remove-bookmark-and-sidebar.md)）
 - 日付：2026-10-28
 - 関連：FR-13、FR-14、FR-15、[data-model.md](../data-model.md)
 

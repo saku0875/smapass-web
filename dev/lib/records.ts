@@ -1,45 +1,84 @@
-// 記録データから画面に出す値を計算する
-import { GAP_DAYS, HIGH_TEMP_C } from "./format";
-import type { RecordData } from "./types";
+// 状態計測の履歴（history.items）から画面に出す値を計算する。
+// 計測値は null（不明）になり得る。null は 0 や「異常なし」として数えず、計算から外す。
+import { HIGH_TEMP_C } from "./format";
+import type { StatusRecord } from "./types";
 
 const DAY_MS = 86400000;
 
-export function findGaps(records: RecordData[]) {
-  const gaps: { from: string; to: string; days: number }[] = [];
+type NumericKey = {
+  [K in keyof StatusRecord]: StatusRecord[K] extends number | null ? (null extends StatusRecord[K] ? K : never) : never;
+}[keyof StatusRecord];
+
+/** 値が分かっている計測だけを、値と組にして返す */
+export function known<K extends NumericKey>(records: StatusRecord[], key: K) {
+  return records.flatMap((r) => (r[key] == null ? [] : [{ record: r, value: r[key] as number }]));
+}
+
+export function maxOf(records: StatusRecord[], key: NumericKey): number | null {
+  const values = known(records, key).map((v) => v.value);
+  return values.length > 0 ? Math.max(...values) : null;
+}
+
+export function periodDays(fromIso: string, toIso: string) {
+  return Math.round((Date.parse(toIso) - Date.parse(fromIso)) / DAY_MS);
+}
+
+/**
+ * 計測の間隔が最も空いたところ。欠測かどうかのしきい値はまだ決まっていないので、
+ * 「途切れた」とは判定せず、事実として間隔だけを出す
+ */
+export function longestInterval(records: StatusRecord[]) {
+  let longest: { from: string; to: string; days: number } | undefined;
   for (let i = 1; i < records.length; i++) {
-    const days = Math.round((Date.parse(records[i].recordedAt) - Date.parse(records[i - 1].recordedAt)) / DAY_MS);
-    if (days >= GAP_DAYS) gaps.push({ from: records[i - 1].recordedAt, to: records[i].recordedAt, days });
+    const days = (Date.parse(records[i].collected_at) - Date.parse(records[i - 1].collected_at)) / DAY_MS;
+    if (!longest || days > longest.days) {
+      longest = { from: records[i - 1].collected_at, to: records[i].collected_at, days };
+    }
   }
-  return gaps;
+  return longest && { ...longest, days: Math.round(longest.days * 10) / 10 };
 }
 
-export function recordPeriodDays(records: RecordData[]) {
-  if (records.length < 2) return 0;
-  return Math.round((Date.parse(records.at(-1)!.recordedAt) - Date.parse(records[0].recordedAt)) / DAY_MS);
+/** 温度が分かっている計測のうち、高温の目安を超えた回数 */
+export function countHighTemp(records: StatusRecord[]) {
+  const temps = known(records, "battery_temp_c");
+  return { count: temps.filter((t) => t.value > HIGH_TEMP_C).length, of: temps.length };
 }
 
-export function countHighTemp(records: RecordData[]) {
-  return records.filter((r) => r.batteryTempC > HIGH_TEMP_C).length;
+/** 最初と最新の推定最大電荷の変化（%、小数1桁）。値が2件以上ないときは null */
+export function fullChargeChange(records: StatusRecord[]) {
+  const values = known(records, "battery_full_charge_mah");
+  if (values.length < 2) return null;
+  const first = values[0].value;
+  const latest = values.at(-1)!.value;
+  return { first, latest, pct: Math.round(((latest - first) / first) * 1000) / 10 };
 }
 
-/** 記録開始時から最新までの推定最大電荷の変化（%、小数1桁） */
-export function estimatedMaxChangePct(records: RecordData[]) {
-  if (records.length < 2) return 0;
-  const first = records[0].estimatedMaxMah;
-  return Math.round(((records.at(-1)!.estimatedMaxMah - first) / first) * 1000) / 10;
-}
-
-/** OSのバージョンが変わった記録だけを並べる */
-export function osHistory(records: RecordData[]) {
+/** OSのバージョンが変わった計測だけを並べる */
+export function osHistory(records: StatusRecord[]) {
   return records.filter(
-    (r, i) => i === 0 || r.androidVersion !== records[i - 1].androidVersion || r.sdkInt !== records[i - 1].sdkInt,
+    (r, i) => i === 0 || r.os_version !== records[i - 1].os_version || r.sdk_int !== records[i - 1].sdk_int,
   );
 }
 
-/** 1週間あたりの起動回数。記録の間隔が空いても比べられるよう、間隔の日数で割る */
-export function bootsPerWeek(records: RecordData[]) {
-  return records.slice(1).map((r, i) => {
-    const days = (Date.parse(r.recordedAt) - Date.parse(records[i].recordedAt)) / DAY_MS;
-    return { recordedAt: r.recordedAt, perWeek: Math.round(((r.bootCount - records[i].bootCount) / days) * 7 * 10) / 10 };
+/** 異常終了の有無ごとの件数。null（不明）は別に数える */
+export function abnormalExits(records: StatusRecord[]) {
+  return {
+    yes: records.filter((r) => r.had_abnormal_exit === true),
+    unknown: records.filter((r) => r.had_abnormal_exit == null).length,
+  };
+}
+
+/**
+ * 1週間あたりの起動回数。計測の間隔が空いても比べられるよう、間隔の日数で割る。
+ * 前後どちらかの起動回数が不明な区間、時刻が同じ区間、回数が減った区間（初期化など）は出さない
+ */
+export function bootsPerWeek(records: StatusRecord[]) {
+  return records.slice(1).flatMap((r, i) => {
+    const prev = records[i];
+    if (r.boot_count == null || prev.boot_count == null) return [];
+    const days = (Date.parse(r.collected_at) - Date.parse(prev.collected_at)) / DAY_MS;
+    const diff = r.boot_count - prev.boot_count;
+    if (days <= 0 || diff < 0) return [];
+    return [{ collected_at: r.collected_at, perWeek: Math.round((diff / days) * 7 * 10) / 10 }];
   });
 }

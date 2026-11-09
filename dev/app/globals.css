@@ -142,18 +142,113 @@ textarea {
   font-size: 1.1rem;
 }
 
+.overview-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border: 1.5px solid var(--fg);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.overview-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.overview-fill {
+  flex: 1;
+}
+
+.grade-list {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.grade-list-item {
+  padding: 12px 0;
+}
+
+.grade-list-item + .grade-list-item {
+  border-top: 1px solid var(--line);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.overview-actions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 14px;
+  text-align: center;
+}
+
 .overview-cta {
-  width: 100%;
-  max-width: 420px;
   padding: 16px 24px;
   font-size: 1.05rem;
   font-weight: 600;
 }
 
-.grade-items-columns {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 12px;
+@media (min-width: 1000px) {
+  .overview-hero {
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr) minmax(260px, 1.2fr);
+    align-items: center;
+    gap: 0;
+    padding: 24px 0;
+  }
+
+  .overview-hero > * {
+    padding: 0 32px;
+  }
+
+  .overview-hero > * + * {
+    border-left: 1px solid var(--line);
+  }
+
+  .overview-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .overview-pair > .overview-check {
+    order: 1;
+  }
+
+  .overview-actions {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+    text-align: left;
+  }
+
+  .overview-cta {
+    flex-shrink: 0;
+    width: 320px;
+  }
 }
 
 /* グラフを横に並べる。狭いときは縦に積む */

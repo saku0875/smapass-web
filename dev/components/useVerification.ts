@@ -1,70 +1,61 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { canonicalJson, sha256Hex } from "@/lib/hash";
-import type { ChainEntry, RecordData, VerificationRecord } from "@/lib/types";
+import { ApiNotFoundError, fetchAllPages } from "@/lib/api";
+import type { Page, VerificationRecord } from "@/lib/types";
+import { checkRecords, isRowOk, type VerifiedRow } from "@/lib/verify";
 
-export type VerifiedRow = {
-  index: number;
-  data: RecordData;
-  canonical: string;
-  txHash: string;
-  localHash: string;
-  chain?: ChainEntry;
-  matched: boolean;
-};
+export type { VerifiedRow };
 
 export type VerificationState =
   | { phase: "checking" }
-  | { phase: "match"; rows: VerifiedRow[]; checkedAt: Date }
+  /** 通信エラー・タイムアウト・429・5xx。改ざんが見つかったわけではない */
+  | { phase: "unverifiable"; reason: string }
+  /** 記録がまだない */
+  | { phase: "empty"; checkedAt: Date }
+  /** ハッシュか、記録のつながりが合わないものがある */
   | { phase: "mismatch"; rows: VerifiedRow[]; checkedAt: Date }
-  | { phase: "unverifiable"; reason: string };
-
-const TIMEOUT_MS = 8000;
-
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store" });
-  if (!res.ok) throw new Error(`${res.status}`);
-  return res.json() as Promise<T>;
-}
+  /**
+   * 記録どうしの整合性は取れているが、チェーンと照合できていない。
+   * Back はまだチェーンに記録していない（anchor_state は "unanchored"）ので、「一致」とは表示しない
+   */
+  | { phase: "unanchored"; rows: VerifiedRow[]; checkedAt: Date; demo: boolean };
 
 /**
- * 1. 記録データ本体をバックエンドから取る
- * 2. ブラウザで正規化してSHA-256を計算する
- * 3. チェーンに記録されたハッシュを別経路で読む
- * 4. 比べる。通信の失敗は「不一致」ではなく「照合できず」にする
+ * 1. Back から全ログ（canonical_payload・payload_hash など）を全ページ取得する
+ * 2. canonical_payload の文字列をそのまま SHA-256 にかけ、payload_hash と比べる。
+ *    JSON を正規化し直したり、API の応答を再シリアライズしたりしない
+ * 3. 連番が続いているか、previous_hash が1件前の payload_hash と一致するかを確かめる
+ * 4. チェーンとの照合：Back はまだチェーンに記録していないので、照合できずにする。
+ *    anchor_state が "confirmed" でもサーバーの保存状態にすぎず、ブラウザで照合した結果ではない
+ *
+ * 通信の失敗は「不一致」ではなく「照合できず」にする
  */
 async function verify(id: string): Promise<VerificationState> {
   let records: VerificationRecord[];
   try {
-    records = (await fetchJson<{ records: VerificationRecord[] }>(`/api/mock/certificates/${id}/records`)).records;
-  } catch {
-    return { phase: "unverifiable", reason: "記録データを取得できませんでした。" };
+    records = (
+      await fetchAllPages<Page<VerificationRecord>, VerificationRecord>(
+        (offset, limit) => `/api/devices/${encodeURIComponent(id)}/records?limit=${limit}&offset=${offset}`,
+        (body) => body,
+      )
+    ).items;
+  } catch (e) {
+    return {
+      phase: "unverifiable",
+      reason:
+        e instanceof ApiNotFoundError
+          ? "記録データが見つかりませんでした。表示した後に非公開に切り替えられた可能性があります。"
+          : "記録データを取得できませんでした。",
+    };
   }
 
-  const hashed = await Promise.all(
-    records.map(async (r, index) => {
-      const canonical = canonicalJson(r.data);
-      return { index, data: r.data, canonical, txHash: r.txHash, localHash: await sha256Hex(canonical) };
-    }),
-  );
-
-  let entries: Record<string, ChainEntry>;
-  try {
-    const tx = records.map((r) => r.txHash).join(",");
-    entries = (await fetchJson<{ entries: Record<string, ChainEntry> }>(`/api/mock/chain?tx=${tx}`)).entries;
-  } catch {
-    return { phase: "unverifiable", reason: "ブロックチェーンに接続できませんでした。" };
-  }
-
-  const rows: VerifiedRow[] = hashed.map((h) => {
-    const chain = entries[h.txHash];
-    return { ...h, chain, matched: chain?.hash === h.localHash };
-  });
   const checkedAt = new Date();
-  return rows.every((r) => r.matched)
-    ? { phase: "match", rows, checkedAt }
-    : { phase: "mismatch", rows, checkedAt };
+  if (records.length === 0) return { phase: "empty", checkedAt };
+
+  const rows = await checkRecords(records);
+  if (!rows.every(isRowOk)) return { phase: "mismatch", rows, checkedAt };
+  return { phase: "unanchored", rows, checkedAt, demo: rows.some((r) => r.demo) };
 }
 
 export function useVerification(id: string) {

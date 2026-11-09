@@ -1,17 +1,27 @@
-import { formatDate, formatMonthRange } from "@/lib/format";
-import { recordPeriodDays } from "@/lib/records";
-import type { RecordData } from "@/lib/types";
+import { formatDateTime, formatMonthRange } from "@/lib/format";
+import { periodDays } from "@/lib/records";
+import type { DeviceState } from "@/lib/types";
 
-/** 評価をどこまで信じてよいかの目安として、記録期間・回数・発行日を1行で添える */
-export function RecordBasis({ records, issuedAt }: { records: RecordData[]; issuedAt: string }) {
-  const periodDays = recordPeriodDays(records);
+/**
+ * 最終計測日時と記録期間・件数（decisions/0014）。
+ * 中身は新しい計測が届くたびに更新されるので、いつ時点の情報かを目立つ位置に出す
+ */
+export function RecordBasis({ device }: { device: DeviceState }) {
+  const { first_collected_at: first, last_collected_at: last, record_count: count } = device;
+
+  if (!first || !last) {
+    return <p className="small notice">まだ記録が届いていません。</p>;
+  }
+
+  const days = periodDays(first, last);
   return (
     <>
+      <p style={{ fontWeight: 600 }}>最終計測：{formatDateTime(last)}</p>
       <p className="small muted">
-        {formatMonthRange(records[0].recordedAt, records.at(-1)!.recordedAt)}の{periodDays}日間・
-        {records.length}回の記録に基づく評価（{formatDate(issuedAt)}発行）
+        {formatMonthRange(first, last)}の{days}日間・{count}件の記録。
+        リアルタイムの端末の状態ではなく、新しい記録が届くと内容が更新されます。
       </p>
-      {periodDays < 60 && (
+      {days < 60 && (
         <p className="small notice">記録期間が短いため、使われ方の傾向は判断しにくい点に注意してください。</p>
       )}
     </>

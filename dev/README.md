@@ -1,30 +1,46 @@
 # Webフロント プロトタイプ
 
-docs/ の構成に沿ったプロトタイプ。Goバックエンドとチェーン（Sepolia）は模擬で、`app/api/mock/` と `lib/backend.ts` が代わりをしている。
+docs/ の構成に沿ったプロトタイプ。データは smapass-back（Go API）の公開 API から取る。ブロックチェーンとの照合は Back が未実装のため、まだ行わない。
 
 ## 動かし方
 
+1. smapass-back を起動してデモデータを入れる（smapass-back のディレクトリで）
+
+   ```bash
+   cp .env.example .env   # CORS_ORIGINS に http://localhost:3000 が入っていること（末尾の / なし）
+   docker compose up -d --build --wait app && make seed
+   ```
+
+2. Web を起動する
+
+   ```bash
+   npm install
+   npm run dev        # http://localhost:3000
+   npm test           # 共通テストベクタ（test/vectors/）、検証の判定、端末ID・IMEIの形式
+   npm run build
+   ```
+
+## 環境変数
+
+| 名前 | 既定値 | 内容 |
+| --- | --- | --- |
+| `NEXT_PUBLIC_BACKEND_ORIGIN` | `http://localhost:8080` | Back の URL。サーバー（ページ描画）とブラウザ（検証・IMEI照合）の両方から呼ぶ |
+| `SITE_ORIGIN` | アクセスされたホスト | QR・カード画像・コピー用URLに載せる正規のドメイン。本番では固定する |
+
+## デモ端末
+
+IMEI `000000000094821`（28件、`is_demo: true`、署名は無効、アンカーなし、spec は未登録）。端末の UUID は seed を入れるたびに変わるので、検索してから開く。
+
 ```bash
-npm install
-npm run dev        # http://localhost:3000
-npm test           # ハッシュのテストベクタと証明書IDの形式の確認
-npm run build
+curl 'http://localhost:8080/api/devices/search?imeis=000000000094821'
+# → http://localhost:3000/certificates/<UUID> を開く
 ```
 
-## デモ用の証明書
+概要（`/certificates/<UUID>`）から「詳細を見る」で `/details`、検証結果の「詳しく見る」で `/verify` に移る。出品用素材は `/share`。
 
-トップページの一覧から開ける。証明書はURL（`/c/<証明書ID>`）とQRコードだけで開き、番号の入力はない（docs/decisions/0010）。開くと概要画面が出て、「詳細を見る」で `/c/<証明書ID>/details` に移る。
+## 未実装・差し替え予定
 
-| 機種 | 見どころ |
-| --- | --- |
-| Google Pixel 8（発行 10/20） | 一致。出品先と整備記録あり |
-| Samsung Galaxy S23 | 13件目をDB上で書き換えた想定 → 不一致 |
-| Google Pixel 8（発行 8/31） | 再発行済み → 新しい証明書へ誘導 |
-| Sony Xperia 10 V | チェーンに接続できない → 照合できず。記録が途切れた期間あり |
-| SHARP AQUOS sense8 | 失効済み。記録期間が短い |
-
-## 本番に向けて差し替えるところ
-
-- `lib/backend.ts`：Go APIの呼び出しに置き換える
-- `components/useVerification.ts`：`/api/mock/chain` をSepoliaのRPC読み取り（viem）に置き換える
-- `lib/site.ts`：正規のドメインを `SITE_ORIGIN` で固定する
+- 評価・出品先・整備記録：Back が未実装。画面では「準備中」と表示し、仮の値で埋めない
+- ブロックチェーンとの照合：Back がチェーンに記録するようになったら `lib/verify.ts` と `components/useVerification.ts` に足す。それまで「一致」は出さない
+- 署名（ECDSA）のブラウザでの検証：未実装
+- 「改ざんあり」「チェーン接続不可」のデモ：Back にないため、モック（`/api/mock/*`）と一緒に削除した。ハッシュ不一致の判定は `test/verify.test.ts` で確かめている

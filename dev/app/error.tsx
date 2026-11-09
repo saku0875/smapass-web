@@ -1,11 +1,13 @@
 "use client";
 
-// 通信エラーなど。検証の「照合できず」とは別の表示にする
+// 429・5xx・通信エラーなど。「見つからない」や検証の「不一致」とは別の表示にする
 export default function ErrorPage({ reset }: { error: Error; reset: () => void }) {
   return (
     <section className="section">
-      <h1>ページを表示できませんでした</h1>
-      <p>通信の問題が起きている可能性があります。時間をおいて再読み込みしてください。</p>
+      <h1>一時的に表示できません</h1>
+      <p>
+        通信の問題が起きているか、サーバーが混み合っている可能性があります。証明書に問題が見つかったわけではありません。時間をおいて再読み込みしてください。
+      </p>
       <div>
         <button type="button" className="button primary" onClick={reset}>
           再読み込み

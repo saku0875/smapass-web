@@ -23,7 +23,7 @@ export function SaveCardButton({ id }: { id: string }) {
   // スマホは共有シートから写真に保存してもらう。使えないブラウザではダウンロードする
   async function save() {
     setBusy(true);
-    const src = `/c/${id}/card.png`;
+    const src = `/certificates/${id}/card.png`;
     const filename = `certificate-${id}.png`;
     try {
       const blob = await (await fetch(src)).blob();

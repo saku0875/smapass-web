@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { demoCertificates } from "@/lib/backend";
 
 export default function TopPage() {
   return (
@@ -8,7 +7,8 @@ export default function TopPage() {
         <h1>中古スマホの使われ方を、証明書で確かめる</h1>
         <p className="muted">
           出品者のスマホに入れたアプリが、バッテリーや温度を定期的に記録します。
-          その記録を証明書にして、記録が改ざんされていないかを買い手のブラウザで確かめられます。
+          その記録を証明書にして、買い手が内容を確かめられるようにします。ブロックチェーンを使った改ざんの確認は準備中です。
+          証明書のページは、新しい記録が届くたびに最新の内容に更新されます。
         </p>
       </section>
 
@@ -31,35 +31,6 @@ export default function TopPage() {
         </Link>
       </section>
 
-      <section className="section w-half">
-        <div className="section-head">
-          <h2>デモ用の証明書</h2>
-        </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>機種</th>
-                <th>見どころ</th>
-                <th>出品者向け</th>
-              </tr>
-            </thead>
-            <tbody>
-              {demoCertificates.map((d) => (
-                <tr key={d.id}>
-                  <td>
-                    <Link href={`/c/${d.id}`}>{d.label}</Link>
-                  </td>
-                  <td>{d.note}</td>
-                  <td>
-                    <Link href={`/c/${d.id}/share`}>出品用素材</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </>
   );
 }

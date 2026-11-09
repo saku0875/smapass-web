@@ -1,5 +1,5 @@
 // 記録データのハッシュ計算。RFC 8785（JCS）で正規化してSHA-256を取る（features/verification.md）
-// ブラウザとサーバー（模擬チェーン）の両方で同じ関数を使う。
+// ブラウザ検証では Back の canonical_payload をそのまま sha256Hex にかける。canonicalJson はテストベクタの確認に使う。
 
 import canonicalize from "canonicalize";
 

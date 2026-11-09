@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "smapass", template: "%s | smapass" },
-  description: "中古スマホの使用履歴を証明書にして、記録が改ざんされていないかを確かめられるサービス",
+  description: "中古スマホの使用履歴を証明書にして、買い手が確かめられるようにするサービス",
 };
 
 export const viewport: Viewport = {

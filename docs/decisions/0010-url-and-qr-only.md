@@ -1,6 +1,6 @@
 # 0010 証明書番号をなくし、QRコードとURLだけで開く
 
-- ステータス：提案中
+- ステータス：一部置き換え済み（ID の形式とパスは [0013](0013-device-uuid-url.md)）
 - 日付：2026-10-29
 - 関連：FR-01、FR-11、FR-12、FR-16、NFR-04、NFR-06、[features/qr.md](../features/qr.md)
 - 置き換え：[0005](0005-certificate-number-format.md)の全体、[0004](0004-marketplace-policy.md)のうち「相談の結果が出るまではA＋Bで作る」の部分

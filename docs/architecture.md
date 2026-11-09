@@ -1,6 +1,6 @@
 # 構成
 
-Webは読み取り専用のNext.jsアプリで、Goバックエンドから証明書を取り、ブラウザからSepoliaを直接読んで検証する。書き込みはすべてアプリ経由。
+Webは読み取り専用のNext.jsアプリで、Goバックエンド（smapass-back）から端末の状態と記録を取り、ブラウザで検証する。ブロックチェーンとの照合は、Back がチェーンに記録するようになってから足す。書き込みはすべてアプリ経由。
 
 ## 全体構成
 
@@ -8,7 +8,7 @@ Webは読み取り専用のNext.jsアプリで、Goバックエンドから証�
 flowchart LR
     APP[アプリ<br>Kotlin] -- 記録・発行・出品先の登録 --> GO[バックエンド<br>Go]
     GO --> DB[(DB)]
-    GO -- ハッシュと時刻を記録 --> CHAIN[Ethereum Sepolia]
+    GO -- ハッシュと時刻を記録 --> CHAIN[ブロックチェーン<br>Sepolia か Tapyrus（未決）]
     NEXT[Web サーバー<br>Next.js] -- 証明書を取得 --> GO
     BROWSER[ブラウザ] --> NEXT
     BROWSER -- 記録データを取得 --> GO
@@ -19,11 +19,11 @@ flowchart LR
 | 担当 | 役割 |
 | --- | --- |
 | アプリ（Kotlin） | 端末情報の取得と定期記録、証明書の発行、出品先の登録 |
-| バックエンド（Go） | 記録の保存、評価の算出、Sepoliaへのハッシュ記録、Web向けAPI |
+| バックエンド（Go） | 記録の保存、評価の算出、ブロックチェーンへのハッシュ記録（未実装）、Web向けAPI |
 | Web（Next.js、このリポジトリ） | 証明書の表示（整備記録を含む）、ブラウザ検証、カード画像・OGP画像の生成 |
 | 事業者向けサイト（別リポジトリ） | メーカー・修理業者のログインと、整備記録の書き込み（[decisions/0009](decisions/0009-partner-site-separate-repo.md)） |
 
-ブラウザ検証では、記録データはGoから、ハッシュはSepoliaから別々に取る。運営者のサーバーだけを信じなくて済むようにするため（[decisions/0001](decisions/0001-verify-in-browser.md)）。
+ブラウザ検証では、記録データはGoから、ハッシュはブロックチェーンから別々に取る。運営者のサーバーだけを信じなくて済むようにするため（[decisions/0001](decisions/0001-verify-in-browser.md)）。
 
 ## 技術選定と代案
 
@@ -46,17 +46,23 @@ flowchart LR
 
 | パス | 中身 |
 | --- | --- |
-| `/c/[ID]/card.png` | 出品用カード画像（[features/qr.md](features/qr.md)） |
-| `/c/[ID]` のOGP画像 | カード画像と同じ仕組みで生成する |
+| `/certificates/[ID]/card.png` | 出品用カード画像（[features/qr.md](features/qr.md)） |
+| `/certificates/[ID]` のOGP画像 | カード画像と同じ仕組みで生成する |
 
-## Webが使うAPI（案）
+## Webが使うAPI
 
-| メソッド | パス | 用途 | 返すもの |
+smapass-back の公開 API（認証なし・読み取り専用）。定義は smapass-back の docs/api.md・docs/openapi.json。
+
+| メソッド | パス | 呼ぶ場所 | 用途 |
 | --- | --- | --- | --- |
-| GET | `/api/certificates/{ID}` | 概要画面・詳細画面・カード画像・OGP画像 | 端末情報、評価と説明文、推移グラフ用データ、出品先、有効・失効の状態 |
-| GET | `/api/certificates/{ID}/records` | ブラウザ検証 | 正規化済みの記録データ本体、各ハッシュ、トランザクションハッシュ |
+| GET | `/api/devices/{id}?limit=&offset=` | Web のサーバー | 概要・詳細・出品用素材・カード画像・OGP画像。最新のスペック・状態と全期間の履歴（history を total まで順に取得） |
+| GET | `/api/devices/{id}/records?limit=&offset=` | ブラウザ | ブラウザ検証。全ログの canonical_payload・ハッシュ・署名・チェーン情報 |
+| GET | `/api/devices/search?imeis=` | ブラウザ | 届いた端末との照合（FR-05）。IMEI を Web のサーバーに通さないため、ブラウザから直接呼ぶ |
 
+- Back の URL は環境変数 `NEXT_PUBLIC_BACKEND_ORIGIN`（開発時は `http://localhost:8080`）で受け取る
+- ブラウザから直接呼ぶので、Back の `CORS_ORIGINS` に Web の Origin を完全一致（scheme・host・port、末尾の / なし）で入れる。Cookie は使わない
+- `limit` は1〜500（Web は500で取る）、`offset` は0〜1,000,000
+- エラーは `{"error":{"code","message"}}`。400・404 は not-found（「見つからないか、非公開」）、429・5xx・通信エラーは「一時的に取得できません」「照合できず」にし、「不一致」とは表示しない。Web 側のタイムアウトは8秒（Back の処理上限は5秒）
+- `/api/devices?ids=`（一括の概要）はブックマーク・比較用だが、Web はブックマークをなくしたので使わない（[decisions/0012](decisions/0012-remove-bookmark-and-sidebar.md)）
 - カード画像とOGP画像はNext.js側で生成するので、Goに専用のAPIは求めない
-- 出品先を登録するAPIはアプリとGoの間で決める。Webは使わない
-- ブラウザがGoのAPIを直接呼ぶ場合はCORSの許可が必要。代案はNext.jsのRoute Handlerを経由させる形
-- MVPのWebは読み取り専用で、書き込み系のAPIは使わない
+- 書き込み API（`/api/auth/*`、logs、visibility、revoke など）は Android アプリ専用で、Web は使わない

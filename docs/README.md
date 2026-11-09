@@ -10,7 +10,7 @@
 | [workflow.md](workflow.md) | 出品から購入・受け取りまでの流れ、例外時の流れ |
 | [screens.md](screens.md) | 画面一覧、画面遷移、各画面の表示項目 |
 | [architecture.md](architecture.md) | 全体構成、技術選定と代案、Webが使うAPI |
-| [data-model.md](data-model.md) | Webが前提にしているデータの制約と、失効・再発行など履歴の方針 |
+| [data-model.md](data-model.md) | Webが前提にしているデータの制約と、公開・非公開など履歴の方針 |
 | [security.md](security.md) | 信頼モデル（保証できること・できないこと）、脅威と対策、認証・認可 |
 | [features/qr.md](features/qr.md) | 出品用素材（カード画像・QR・コピー用テキスト）、フリマ規約上の制約 |
 | [features/verification.md](features/verification.md) | ブラウザでの改ざん検証、ハッシュの取り決め |
@@ -29,22 +29,25 @@
 
 ## 決定事項
 
-ステータスは2026-11-05時点。提案中のものは、チームで決めたら更新する。
+ステータスは2026-11-07時点。提案中のものは、チームで決めたら更新する。
 
 | 番号 | 決定 | ステータス |
 | --- | --- | --- |
 | [0001](decisions/0001-verify-in-browser.md) | 改ざん検証はブラウザで行う | 提案中 |
 | [0002](decisions/0002-bookmark-in-browser.md) | ブックマークはMVPではブラウザに保存する | 置き換え済み（0012） |
-| [0003](decisions/0003-certificate-snapshot.md) | 証明書は発行時点のスナップショットにする | 提案中 |
+| [0003](decisions/0003-certificate-snapshot.md) | 証明書は発行時点のスナップショットにする | 置き換え済み（0014） |
 | [0004](decisions/0004-marketplace-policy.md) | フリマ規約への対応：各フリマに持ち帰って相談する | 一部置き換え済み（0010） |
 | [0005](decisions/0005-certificate-number-format.md) | 証明書番号は手入力できる短い番号にする | 置き換え済み（0010） |
 | [0006](decisions/0006-listing-link.md) | 出品先を証明書に登録して表示する | 一部置き換え済み（0011） |
 | [0007](decisions/0007-card-image-on-web.md) | 出品用カード画像はWebで生成する | 提案中 |
 | [0008](decisions/0008-grade-on-backend.md) | 評価はバックエンドで算出する | 提案中 |
 | [0009](decisions/0009-partner-site-separate-repo.md) | 事業者向けサイトは別リポジトリにし、整備記録の表示はこのリポジトリで行う | 提案中 |
-| [0010](decisions/0010-url-and-qr-only.md) | 証明書番号をなくし、QRコードとURLだけで開く | 提案中 |
-| [0011](decisions/0011-device-data-items.md) | アプリが取得するデータ項目を見直し、IMEIをアプリから取得する | 提案中 |
+| [0010](decisions/0010-url-and-qr-only.md) | 証明書番号をなくし、QRコードとURLだけで開く | 一部置き換え済み（0013） |
+| [0011](decisions/0011-device-data-items.md) | アプリが取得するデータ項目を見直し、IMEIをアプリから取得する | 一部置き換え済み（0015） |
 | [0012](decisions/0012-remove-bookmark-and-sidebar.md) | ブックマークをなくし、メニューのない画面構成にする | 提案中 |
+| [0013](decisions/0013-device-uuid-url.md) | 証明書のURLを端末のUUIDにし、`/certificates/{id}` で開く | 提案中 |
+| [0014](decisions/0014-show-latest-device-state.md) | 証明書は発行時点で固定せず、端末の最新の状態と全期間の履歴を表示する | 提案中 |
+| [0015](decisions/0015-imei-input-check.md) | IMEIの末尾表示をやめ、買い手が入力したIMEIで照合する | 提案中 |
 
 ## MVPの実装順
 
@@ -65,9 +68,10 @@
 
 | 用語 | 意味 |
 | --- | --- |
-| 証明書 | ある時点までの端末の記録と評価をまとめたもの。発行後は内容が変わらない |
-| 証明書ID | 証明書のURLに含まれる、推測できない長いランダムな文字列。URLは `/c/[ID]`。画面には表示しない |
+| 証明書 | 端末の最新の状態と全期間の記録をまとめたページ。新しい記録が届くたびに内容が更新される（[decisions/0014](decisions/0014-show-latest-device-state.md)） |
+| 端末ID | Back が端末に割り当てるランダムな UUID。持ち主が替わっても変わらない。URLは `/certificates/[ID]`。画面には表示しない（[decisions/0013](decisions/0013-device-uuid-url.md)） |
 | 出品用素材 | 出品者が出品に添えるカード画像・URL・コピー用テキスト一式 |
 | カード画像 | QR・機種・評価・正規のドメインを載せた正方形の画像 |
-| 出品先 | 出品者がアプリから登録した、証明書を使っている出品（フリマ名と商品ID） |
-| 照合できず | 通信障害などで検証が完了しなかった状態。「不一致」とは別物 |
+| 出品先 | 出品者がアプリから登録した、証明書を使っている出品（フリマ名と商品ID）。Back は未実装 |
+| 最終計測 | 端末から最後に届いた記録の計測日時。ページの内容はこの時点までのもの |
+| 照合できず | 通信障害や、記録がまだブロックチェーンに記録されていないなどで、検証が完了しなかった状態。「不一致」とは別物 |

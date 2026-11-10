@@ -54,6 +54,24 @@ function SectionHead({ title, children }: { title: string; children?: React.Reac
   );
 }
 
+/** 項目名と値の2列の仕様表 */
+function SpecTable({ rows }: { rows: [string, string][] }) {
+  return (
+    <div className="table-wrap">
+      <table>
+        <tbody>
+          {rows.map(([k, v]) => (
+            <tr key={k}>
+              <th style={{ width: "36%" }}>{k}</th>
+              <td style={{ whiteSpace: "normal" }}>{v}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 const shortDate = (iso: string) => formatDate(iso).slice(5);
 const orUnknown = (v: string | number | null | undefined) => (v == null || v === "" ? UNKNOWN : String(v));
 const yesNo = (v: boolean | null) => (v == null ? UNKNOWN : v ? "あり" : "なし");
@@ -71,8 +89,9 @@ export default async function CertificateDetailsPage({ params }: Props) {
   const abnormal = abnormalExits(records);
   const osChanges = osHistory(records);
   const interval = longestInterval(records);
+  // 表の行数を記録の件数にそろえるため、値が不明な記録も null のまま残す
   const point = (key: Parameters<typeof known>[1]) =>
-    known(records, key).map(({ record, value }) => ({ date: shortDate(record.collected_at), value }));
+    records.map((r) => ({ date: shortDate(r.collected_at), value: r[key] as number | null }));
 
   return (
     <>
@@ -100,71 +119,11 @@ export default async function CertificateDetailsPage({ params }: Props) {
         </div>
       </section>
 
-      {/* 端末情報（たまにしか変わらない値） */}
-      <section className="section w-1of3">
-        <SectionHead title="端末情報">
-          {spec && <span className="small muted">{formatDate(spec.collected_at)} 取得</span>}
-        </SectionHead>
-        {spec ? (
-          <div className="table-wrap">
-            <table>
-              <tbody>
-                {[
-                  ["メーカー", spec.manufacturer],
-                  ["モデル", spec.model],
-                  ["端末名", orUnknown(spec.device_name)],
-                  ["SoC", orUnknown(spec.soc)],
-                  ["CPUコア数", withUnit(spec.cpu_cores, "コア")],
-                  ["RAM", formatBytesGb(spec.ram_bytes)],
-                  ["ストレージ", formatBytesGb(spec.storage_bytes)],
-                  [
-                    "画面",
-                    spec.screen_size_inch == null && spec.screen_density_dpi == null
-                      ? UNKNOWN
-                      : `${withUnit(spec.screen_size_inch, "インチ")}・${withUnit(spec.screen_density_dpi, " dpi")}`,
-                  ],
-                  [
-                    "Android",
-                    spec.os_version == null ? UNKNOWN : `${spec.os_version}（SDK ${orUnknown(spec.sdk_int)}）`,
-                  ],
-                ].map(([k, v]) => (
-                  <tr key={k}>
-                    <th style={{ width: "36%" }}>{k}</th>
-                    <td style={{ whiteSpace: "normal" }}>{v}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="box small">端末情報はまだ届いていません。</p>
-        )}
-      </section>
-
-      {/* バッテリー */}
-      <section className="section w-1of3">
-        <SectionHead title="バッテリー">
-          {latest && <span className="small muted">{formatDate(latest.collected_at)} 計測</span>}
-        </SectionHead>
-        <div className="grid-3">
-          <Stat label="推定最大電荷（最新）" value={withUnit(latest?.battery_full_charge_mah ?? null, " mAh")} />
-          <Stat
-            label="記録開始時からの変化"
-            value={fullCharge ? `${fullCharge.pct > 0 ? "+" : ""}${fullCharge.pct}%` : UNKNOWN}
-            sub={fullCharge ? `${fullCharge.first.toLocaleString("ja-JP")} mAh から` : undefined}
-          />
-          <Stat label="充放電サイクル" value={withUnit(latest?.battery_cycle_count ?? null, "回")} />
-        </div>
-        <TrendChart
-          title="推定最大電荷"
-          unit="mAh"
-          points={point("battery_full_charge_mah")}
-          note="満充電したときに蓄えられる量。減るほど劣化しています"
-        />
-      </section>
+      {/* 計測値の欄は 発熱→バッテリー→安定性→OS→ハードウェア→ディスプレイ の順（docs/screens.md）。
+          2段組みの幅でも順番が入れ替わらないよう、広い欄には md-half を付ける */}
 
       {/* 発熱 */}
-      <section className="section w-2of3">
+      <section className="section w-2of3 md-half">
         <SectionHead title="発熱" />
         <div className="grid-3">
           <Stat label="最高温度" value={withUnit(maxTemp, "℃")} />
@@ -200,8 +159,34 @@ export default async function CertificateDetailsPage({ params }: Props) {
         </div>
       </section>
 
+      {/* バッテリー */}
+      <section className="section w-1of3">
+        <SectionHead title="バッテリー">
+          {latest && <span className="small muted">{formatDate(latest.collected_at)} 計測</span>}
+        </SectionHead>
+        <div className="grid-3">
+          <Stat label="推定残量（最新）" value={withUnit(latest?.battery_charge_mah ?? null, " mAh")} />
+          <Stat
+            label="推定満充電容量（最新）"
+            value={withUnit(latest?.battery_full_charge_mah ?? null, " mAh")}
+            sub={
+              fullCharge
+                ? `記録開始時（${fullCharge.first.toLocaleString("ja-JP")} mAh）から${fullCharge.pct > 0 ? "+" : ""}${fullCharge.pct}%`
+                : undefined
+            }
+          />
+          <Stat label="充電サイクル数" value={withUnit(latest?.battery_cycle_count ?? null, "回")} />
+        </div>
+        <TrendChart
+          title="推定満充電容量"
+          unit="mAh"
+          points={point("battery_full_charge_mah")}
+          note="満充電したときに蓄えられる量。減るほど劣化しています"
+        />
+      </section>
+
       {/* 安定性 */}
-      <section className="section w-2of3">
+      <section className="section w-2of3 md-half">
         <SectionHead title="安定性" />
         <div className="grid-3">
           <Stat label="累計起動回数" value={withUnit(latest?.boot_count ?? null, "回")} />
@@ -227,22 +212,31 @@ export default async function CertificateDetailsPage({ params }: Props) {
           title="1週間あたりの起動回数"
           unit="回"
           kind="bar"
-          points={bootsPerWeek(records).map((b) => ({ date: shortDate(b.collected_at), value: b.perWeek }))}
+          points={bootsPerWeek(records).map((b) => ({ date: shortDate(b.collected_at), value: b.perWeek, reason: b.reason }))}
           note="前回の記録からの回数を1週間あたりに直した値"
         />
       </section>
 
-      {/* ソフトウェア */}
+      {/* OS。最新の値（spec の OS/SDK は最新の状態計測の値）と、変わった記録 */}
       <section className="section w-1of3">
-        <SectionHead title="OSの更新履歴" />
+        <SectionHead title="OS" />
+        <SpecTable
+          rows={[
+            ["Androidバージョン", orUnknown(spec?.os_version ?? latest?.os_version)],
+            ["APIレベル", orUnknown(spec?.sdk_int ?? latest?.sdk_int)],
+          ]}
+        />
+        <p className="small" style={{ fontWeight: 600 }}>
+          更新履歴
+        </p>
         {osChanges.length > 0 ? (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>記録日</th>
-                  <th>Android</th>
-                  <th>SDK</th>
+                  <th>Androidバージョン</th>
+                  <th>APIレベル</th>
                 </tr>
               </thead>
               <tbody>
@@ -261,6 +255,45 @@ export default async function CertificateDetailsPage({ params }: Props) {
           </div>
         ) : (
           <p className="small muted">記録がありません。</p>
+        )}
+      </section>
+
+      {/* ハードウェア（たまにしか変わらない値） */}
+      <section className="section w-1of3">
+        <SectionHead title="ハードウェア">
+          {spec && <span className="small muted">{formatDate(spec.collected_at)} 取得</span>}
+        </SectionHead>
+        {spec ? (
+          <SpecTable
+            rows={[
+              ["メーカー", spec.manufacturer],
+              ["モデル", spec.model],
+              ["端末名", orUnknown(spec.device_name)],
+              ["SoC", orUnknown(spec.soc)],
+              ["CPUコア数", withUnit(spec.cpu_cores, "コア")],
+              ["RAM", formatBytesGb(spec.ram_bytes)],
+              ["ストレージ", formatBytesGb(spec.storage_bytes)],
+            ]}
+          />
+        ) : (
+          <p className="box small">端末情報はまだ届いていません。</p>
+        )}
+      </section>
+
+      {/* ディスプレイ */}
+      <section className="section w-1of3">
+        <SectionHead title="ディスプレイ">
+          {spec && <span className="small muted">{formatDate(spec.collected_at)} 取得</span>}
+        </SectionHead>
+        {spec ? (
+          <SpecTable
+            rows={[
+              ["画面サイズ", withUnit(spec.screen_size_inch, "インチ")],
+              ["画面密度", withUnit(spec.screen_density_dpi, " dpi")],
+            ]}
+          />
+        ) : (
+          <p className="box small">端末情報はまだ届いていません。</p>
         )}
       </section>
 
@@ -287,14 +320,15 @@ export default async function CertificateDetailsPage({ params }: Props) {
                 <tr>
                   <th>連番</th>
                   <th>計測日時</th>
-                  <th>Android</th>
                   <th>温度</th>
-                  <th>充放電サイクル回数</th>
-                  <th>残り電荷</th>
-                  <th>推定最大電荷</th>
+                  <th>熱的余裕</th>
+                  <th>推定残量</th>
+                  <th>推定満充電容量</th>
+                  <th>充電サイクル数</th>
                   <th>起動回数</th>
                   <th>異常終了</th>
-                  <th>熱的余裕</th>
+                  <th>Androidバージョン</th>
+                  <th>APIレベル</th>
                 </tr>
               </thead>
               <tbody>
@@ -302,16 +336,15 @@ export default async function CertificateDetailsPage({ params }: Props) {
                   <tr key={r.sequence}>
                     <td>{r.sequence}</td>
                     <td>{formatDateTime(r.collected_at)}</td>
-                    <td>
-                      {r.os_version}（{r.sdk_int}）
-                    </td>
                     <td>{withUnit(r.battery_temp_c, "℃")}</td>
-                    <td>{withUnit(r.battery_cycle_count, "回")}</td>
+                    <td>{withUnit(r.thermal_headroom, "", 2)}</td>
                     <td>{withUnit(r.battery_charge_mah, " mAh")}</td>
                     <td>{withUnit(r.battery_full_charge_mah, " mAh")}</td>
+                    <td>{withUnit(r.battery_cycle_count, "回")}</td>
                     <td>{orUnknown(r.boot_count)}</td>
                     <td>{yesNo(r.had_abnormal_exit)}</td>
-                    <td>{withUnit(r.thermal_headroom, "", 2)}</td>
+                    <td>{r.os_version}</td>
+                    <td>{r.sdk_int}</td>
                   </tr>
                 ))}
               </tbody>

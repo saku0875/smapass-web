@@ -70,15 +70,20 @@ export function abnormalExits(records: StatusRecord[]) {
 
 /**
  * 1週間あたりの起動回数。計測の間隔が空いても比べられるよう、間隔の日数で割る。
- * 前後どちらかの起動回数が不明な区間、時刻が同じ区間、回数が減った区間（初期化など）は出さない
+ * 前回の記録との差から出すので、記録の件数とそろうよう1件ごとに返し、
+ * 計算できない記録（最初の記録、前後どちらかの起動回数が不明、時刻が同じ、回数が減った＝初期化など）は
+ * perWeek を null にして理由を付ける
  */
 export function bootsPerWeek(records: StatusRecord[]) {
-  return records.slice(1).flatMap((r, i) => {
-    const prev = records[i];
-    if (r.boot_count == null || prev.boot_count == null) return [];
+  return records.map((r, i): { collected_at: string; perWeek: number | null; reason?: string } => {
+    const at = r.collected_at;
+    if (i === 0) return { collected_at: at, perWeek: null, reason: "最初の記録（前回がない）" };
+    const prev = records[i - 1];
+    if (r.boot_count == null || prev.boot_count == null) return { collected_at: at, perWeek: null, reason: "起動回数が不明" };
     const days = (Date.parse(r.collected_at) - Date.parse(prev.collected_at)) / DAY_MS;
     const diff = r.boot_count - prev.boot_count;
-    if (days <= 0 || diff < 0) return [];
-    return [{ collected_at: r.collected_at, perWeek: Math.round((diff / days) * 7 * 10) / 10 }];
+    if (days <= 0) return { collected_at: at, perWeek: null, reason: "前回と同じ時刻" };
+    if (diff < 0) return { collected_at: at, perWeek: null, reason: "回数が減った（初期化など）" };
+    return { collected_at: at, perWeek: Math.round((diff / days) * 7 * 10) / 10 };
   });
 }

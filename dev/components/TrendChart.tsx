@@ -12,8 +12,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { UNKNOWN } from "@/lib/format";
 
-type Point = { date: string; value: number };
+/** value が null の点はグラフに描かず、表には reason（なければ「不明」）を出す */
+type Point = { date: string; value: number | null; reason?: string };
 
 const axisTick = { fontSize: 11, fill: "#6b6b6b" };
 
@@ -83,7 +85,7 @@ export function TrendChart({
           ) : (
             <LineChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
               {children}
-              <Line type="linear" dataKey="value" stroke="#111" strokeWidth={2} dot={{ r: 2, fill: "#111" }} isAnimationActive={false} />
+              <Line type="linear" dataKey="value" connectNulls stroke="#111" strokeWidth={2} dot={{ r: 2, fill: "#111" }} isAnimationActive={false} />
             </LineChart>
           )}
         </ResponsiveContainer>
@@ -102,10 +104,7 @@ export function TrendChart({
               {points.map((p, i) => (
                 <tr key={i}>
                   <td>{p.date}</td>
-                  <td>
-                    {p.value}
-                    {unit}
-                  </td>
+                  <td>{p.value == null ? <span className="muted">{p.reason ?? UNKNOWN}</span> : `${p.value}${unit}`}</td>
                 </tr>
               ))}
             </tbody>

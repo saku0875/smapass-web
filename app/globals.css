@@ -1,0 +1,549 @@
+:root {
+  /* PC で中身を広げる上限の幅 */
+  --content-max: 1120px;
+  --bg: #ffffff;
+  --fg: #111111;
+  --muted: #6b6b6b;
+  --line: #e2e2e2;
+  --soft: #f5f5f5;
+  --radius: 6px;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-text-size-adjust: 100%;
+  accent-color: var(--fg);
+}
+
+a {
+  color: inherit;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.35;
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+}
+
+h3 {
+  font-size: 0.95rem;
+}
+
+p {
+  margin: 0;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* レイアウト */
+
+.site-header {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 32px;
+}
+
+.brand {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+}
+
+.brand small {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+
+.main {
+  padding: 40px 40px 80px;
+}
+
+.content {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/*
+ * パソコンの画面では、幅をいっぱいに使い、セクションを段組みで並べる。
+ * 既定は全幅。w-1of3 / w-2of3 / w-half で幅を指定する。md-half は2段組みのときだけ半分にする
+ */
+@media (min-width: 1000px) {
+  .main {
+    padding: 32px 32px 64px;
+  }
+
+  /* ロゴを中身の左端にそろえる */
+  .site-header {
+    padding-left: max(32px, calc((100% - var(--content-max)) / 2));
+    padding-right: max(32px, calc((100% - var(--content-max)) / 2));
+  }
+
+  /* 画面いっぱいには広げず、読みやすい幅で中央に置く */
+  .content {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-auto-flow: row dense;
+    align-items: start;
+    gap: 36px 32px;
+  }
+
+  .content > * {
+    grid-column: span 12;
+  }
+
+  .content > .w-1of3,
+  .content > .w-half,
+  .content > .md-half {
+    grid-column: span 6;
+  }
+}
+
+@media (min-width: 1400px) {
+  .content > .w-1of3 {
+    grid-column: span 4;
+  }
+
+  .content > .w-2of3 {
+    grid-column: span 8;
+  }
+}
+
+/* 概要画面 */
+.lead {
+  font-size: 1.1rem;
+}
+
+.overview-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border: 1.5px solid var(--fg);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.overview-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.overview-fill {
+  flex: 1;
+}
+
+.grade-list {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.grade-list-item {
+  padding: 12px 0;
+}
+
+.grade-list-item + .grade-list-item {
+  border-top: 1px solid var(--line);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.overview-actions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 14px;
+  text-align: center;
+}
+
+.overview-cta {
+  padding: 16px 24px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+@media (min-width: 1000px) {
+  .overview-hero {
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr) minmax(260px, 1.2fr);
+    align-items: center;
+    gap: 0;
+    padding: 24px 0;
+  }
+
+  .overview-hero > * {
+    padding: 0 32px;
+  }
+
+  .overview-hero > * + * {
+    border-left: 1px solid var(--line);
+  }
+
+  .overview-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .overview-pair > .overview-check {
+    order: 1;
+  }
+
+  .overview-actions {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+    text-align: left;
+  }
+
+  .overview-cta {
+    flex-shrink: 0;
+    width: 320px;
+  }
+}
+
+/* グラフを横に並べる。狭いときは縦に積む */
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px 28px;
+}
+
+@media (max-width: 400px) {
+  .charts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .site-header {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .main {
+    padding: 24px 16px 64px;
+  }
+
+  .content {
+    gap: 32px;
+  }
+}
+
+/* 部品 */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--fg);
+  padding-bottom: 6px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.82rem;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.break {
+  overflow-wrap: anywhere;
+}
+
+.box {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.box-strong {
+  border: 1.5px solid var(--fg);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.notice {
+  border: 1.5px solid var(--fg);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notice-title {
+  font-weight: 700;
+}
+
+.notice.inverted {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--fg);
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.button:hover {
+  background: var(--soft);
+}
+
+.button.primary {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.button.primary:hover {
+  background: #333;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 520px) {
+  .grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 20px;
+  margin: 0;
+}
+
+.dl dt {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.dl dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+th {
+  font-weight: 600;
+  background: var(--soft);
+}
+
+table.compact {
+  font-size: 0.8rem;
+}
+
+table.compact th,
+table.compact td {
+  padding: 7px 8px;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+details > summary {
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.input {
+  width: 100%;
+  border: 1.5px solid var(--fg);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--bg);
+}
+
+.input:focus {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+
+/* 評価・検証バッジ。色ではなく文字と形で表す */
+
+.grade {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grade-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2em;
+  height: 2em;
+  border: 1.5px solid var(--fg);
+  border-radius: var(--radius);
+  font-weight: 700;
+}
+
+.grade.large .grade-letter {
+  width: 64px;
+  height: 64px;
+  font-size: 2.2rem;
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1.5px solid var(--fg);
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status.solid {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.status.dashed {
+  border-style: dashed;
+}
+
+.tag {
+  display: inline-block;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.tag.strong {
+  border-color: var(--fg);
+  color: var(--fg);
+}

@@ -61,6 +61,7 @@ smapass-back の公開 API（認証なし・読み取り専用）。定義は sm
 
 - Back の URL は環境変数 `NEXT_PUBLIC_BACKEND_ORIGIN`（開発時は `http://localhost:8080`）で受け取る
 - ブラウザから直接呼ぶので、Back の `CORS_ORIGINS` に Web の Origin を完全一致（scheme・host・port、末尾の / なし）で入れる。Cookie は使わない
+- Web の正規のドメイン（QR・カード画像・コピー用URLに載せる）は環境変数 `SITE_ORIGIN` で受け取り、`CORS_ORIGINS` に入れる値と同じにする。リクエストの Host ヘッダーからは決めない。本番では必須で https に限り、未設定・不正なら起動時にエラーにする
 - `limit` は1〜500（Web は500で取る）、`offset` は0〜1,000,000
 - エラーは `{"error":{"code","message"}}`。400・404 は not-found（「見つからないか、非公開」）、429・5xx・通信エラーは「一時的に取得できません」「照合できず」にし、「不一致」とは表示しない。Web 側のタイムアウトは8秒（Back の処理上限は5秒）
 - `/api/devices?ids=`（一括の概要）はブックマーク・比較用だが、Web はブックマークをなくしたので使わない（[decisions/0012](decisions/0012-remove-bookmark-and-sidebar.md)）

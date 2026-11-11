@@ -21,4 +21,13 @@
 
 ## 開発コマンド
 
-（リポジトリ作成後に追記）
+本番のコードはルート、`dev/` は試験用のプロトタイプ。
+
+```bash
+npm run dev        # http://localhost:3000（Back は http://localhost:8080）
+npm test           # node --test test/*.test.ts
+npx next typegen && npm run typecheck
+npm run build
+```
+
+環境変数は [README.md](README.md)。`SITE_ORIGIN` は Host ヘッダーから決めず、本番では必須にする。

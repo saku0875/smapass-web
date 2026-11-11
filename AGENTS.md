@@ -30,4 +30,4 @@ npx next typegen && npm run typecheck
 npm run build
 ```
 
-環境変数は [README.md](README.md)。`SITE_ORIGIN` は Host ヘッダーから決めず、本番では必須にする。
+環境変数は [README.md](README.md)。環境変数を足す・変えるときは `.env.example` も同時に更新する。`SITE_ORIGIN` は Host ヘッダーから決めず、本番では必須にする。

@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { formatDateTime, shortHash } from "@/lib/format";
 import { isRowOk } from "@/lib/verify";
+import { typeLabels } from "./VerifyDetail";
 import { useVerification } from "./useVerification";
 
 /** 結論欄に出す検証結果。simple は概要画面向けで、件数などを出さず言葉だけで伝える */
@@ -73,20 +75,39 @@ export function VerifyStatus({ id, simple = false }: { id: string; simple?: bool
     );
   }
 
-  // 記録どうしの整合性は取れたが、ブロックチェーンとは照合できていない。「一致」「改ざんなし」とは言わない
+  // 記録どうしの整合性は取れた。ブロックチェーンへの保存は30分ごとなので、最新の記録はまだ未記録のことが多い。
+  // そのため、記録済み（サーバーの記録）の中で最新のものを出す。ブラウザでチェーンと照合した結果ではないので「一致」「改ざんなし」とは言わない
+  const latest = state.rows
+    .filter((r) => r.record.anchor_state === "confirmed")
+    .reduce<(typeof state.rows)[number] | undefined>(
+      (a, r) => (!a || r.record.sequence > a.record.sequence ? r : a),
+      undefined,
+    );
+
   return (
     <div className="box" aria-live="polite">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <span className="status dashed">？ 照合できず</span>
-        {!simple && detailLink}
-      </div>
-      <p className="small" style={{ marginTop: 6 }}>
-        {state.demo
-          ? "デモ用の架空の記録で、ブロックチェーンにも記録されていないため、改ざんがないとは確かめられません。"
-          : "記録がまだブロックチェーンに記録されていないため、改ざんがないとは確かめられません。"}
-        {!simple && "記録どうしのつながりに食い違いは見つかりませんでした。"}
-      </p>
-      {simple && <div style={{ marginTop: 6 }}>{detailLink}</div>}
+      {latest ? (
+        <div className="table-wrap">
+          <table className="compact">
+            <tbody>
+              <tr>
+                <td>{typeLabels[latest.record.type] ?? latest.record.type}</td>
+                <td>{formatDateTime(latest.record.collected_at)}</td>
+                <td className="mono" title={latest.localHash}>
+                  {shortHash(latest.localHash)}
+                </td>
+                <td className="mono" title={latest.record.payload_hash}>
+                  {shortHash(latest.record.payload_hash)}
+                </td>
+                <td title={latest.record.transaction_hash ?? undefined}>記録済み</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="small">ブロックチェーンには未記録です（30分ごとに記録されます）。</p>
+      )}
+      <div style={{ marginTop: 6 }}>{detailLink}</div>
     </div>
   );
 }

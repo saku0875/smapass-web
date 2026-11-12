@@ -268,7 +268,6 @@ export default async function CertificateDetailsPage({ params }: Props) {
             rows={[
               ["メーカー", spec.manufacturer],
               ["モデル", spec.model],
-              ["端末名", orUnknown(spec.device_name)],
               ["SoC", orUnknown(spec.soc)],
               ["CPUコア数", withUnit(spec.cpu_cores, "コア")],
               ["RAM", formatBytesGb(spec.ram_bytes)],

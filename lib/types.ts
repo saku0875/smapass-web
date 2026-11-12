@@ -8,7 +8,6 @@
 export type DeviceSpec = {
   manufacturer: string;
   model: string;
-  device_name: string | null;
   soc: string | null;
   cpu_cores: number | null;
   ram_bytes: number | null;

@@ -16,7 +16,7 @@ function download(row: VerifiedRow, id: string) {
   URL.revokeObjectURL(url);
 }
 
-const typeLabels: Record<VerificationRecord["type"], string> = {
+export const typeLabels: Record<VerificationRecord["type"], string> = {
   spec: "スペック",
   status: "状態",
   inspection: "点検",
@@ -29,12 +29,6 @@ const anchorLabels: Record<VerificationRecord["anchor_state"], string> = {
   confirmed: "記録済み（サーバーの記録）",
   failed: "失敗（サーバーの記録）",
 };
-
-function rowResult(r: VerifiedRow) {
-  if (!r.hashMatched) return "✕ ハッシュ不一致";
-  if (!r.linked) return "✕ つながり不一致";
-  return "？ チェーン照合できず";
-}
 
 export function VerifyDetail({ id }: { id: string }) {
   const { state, retry } = useVerification(id);
@@ -75,7 +69,7 @@ export function VerifyDetail({ id }: { id: string }) {
             ✕ 不一致（{state.rows.length}件中{bad}件）
           </span>
         ) : (
-          <span className="status dashed">？ 照合できず（ブロックチェーン未記録）</span>
+          <span />
         )}
         <button type="button" className="button" onClick={retry}>
           もう一度照合する
@@ -83,20 +77,11 @@ export function VerifyDetail({ id }: { id: string }) {
       </div>
       <p className="small muted">照合日時：{formatDateTime(state.checkedAt.toISOString())}</p>
 
-      {state.phase === "unanchored" && (
-        <p className="small">
-          {state.rows.length}件すべてで、このブラウザで計算したハッシュが保存されている値と同じで、記録どうしのつながりにも食い違いはありませんでした。
-          ただし、記録はまだブロックチェーンに記録されていないため、運営者のサーバーを信用せずに「改ざんなし」とは確かめられません。
-          {state.demo && "また、この端末の記録はデモ用の架空のもので、署名も本物ではありません。"}
-        </p>
-      )}
-
       <div className="table-wrap">
         <table className="compact">
           <thead>
             <tr>
               <th>連番</th>
-              <th>結果</th>
               <th>種別</th>
               <th>計測日時</th>
               <th>ブラウザで計算したハッシュ</th>
@@ -111,10 +96,6 @@ export function VerifyDetail({ id }: { id: string }) {
               return (
                 <tr key={r.index} style={ok ? undefined : { background: "#111", color: "#fff" }}>
                   <td>{r.record.sequence}</td>
-                  <td>
-                    {rowResult(r)}
-                    {r.demo && <span className="small">（デモ）</span>}
-                  </td>
                   <td>{typeLabels[r.record.type] ?? r.record.type}</td>
                   <td>{formatDateTime(r.record.collected_at)}</td>
                   <td className="mono" title={r.localHash}>

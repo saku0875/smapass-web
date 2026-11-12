@@ -17,6 +17,7 @@
 
    ```bash
    npm install
+   cp .env.example .env.local   # 環境変数の雛形。開発中は既定値のままでよい
    npm run dev        # http://localhost:3000
    npm test           # 共通テストベクタ、検証の判定、集計、端末ID・IMEI・SITE_ORIGIN の形式
    npm run typecheck  # 先に npx next typegen（または npm run dev / build）でルートの型を作る
